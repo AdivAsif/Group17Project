@@ -1,0 +1,35 @@
+﻿@inject IJSRuntime JsRuntime
+@inherits ComponentBase
+
+@code {
+
+    [Parameter]
+    public string? LoadingText { get; set; }
+
+    protected void StartLoading()
+    {
+        IsLoading = true;
+    }
+
+    protected void StopLoading()
+    {
+        IsLoading = false;
+    }
+
+    [Parameter]
+    public bool IsLoading { get; set; }
+
+    [Parameter]
+    public string? Title { get; set; }
+
+    protected async Task DisplaySuccess(string successMessage)
+    {
+        await JsRuntime.InvokeVoidAsync("DisplaySuccessMessage", successMessage);
+    }
+
+    protected async Task DisplayError(string errorMessage)
+    {
+        await JsRuntime.InvokeVoidAsync("DisplayErrorMessage", errorMessage);
+    }
+
+}

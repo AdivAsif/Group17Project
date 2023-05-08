@@ -1,0 +1,136 @@
+﻿@page "/Shows"
+@inject NavigationManager NavigationManager
+@inherits ShowsComponentBase
+@inject ProfileStateService ProfileStateService
+@inject ITV_SeriesClient SeriesClient
+@using Group17PortalWasm.Services
+@using Group17.Profile
+@using Group17.TVSeries
+@using Group17PortalWasm.Helpers
+@using APIException = Group17.Profile.APIException
+@implements IDisposable
+
+<MudContainer MaxWidth="MaxWidth.ExtraExtraLarge">
+    @if (IsLoading)
+    {
+        <MudGrid>
+            <MudItem xs="12" sm="12">
+                <MudPaper Class="pa-4 m-4" Style="text-align: center">
+                    <MudProgressLinear Color="Color.Primary" Indeterminate="true"/>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
+    else
+    {
+        <MudPaper Class="pa-4">
+            <div class="d-flex justify-content-center mb-4">
+                <MudPagination Color="Color.Primary" Count="PagedSeriesResponse.Total_pages.GetValueOrDefault()" SelectedChanged="PageChanged" Selected="@SelectedPage"/>
+            </div>
+            <MudGrid>
+                @if (PagedSeriesResponse.Shows == null || PagedSeriesResponse.Shows.ToList().Count == 0)
+                {
+                    <MudItem xs="12" sm="12">
+                        <MudPaper Class="pa-4 m-4" Style="text-align: center">
+                            <MudProgressLinear Color="Color.Primary" Indeterminate="true"/>
+                        </MudPaper>
+                    </MudItem>
+                }
+                else
+                {
+                    @foreach (var series in PagedSeriesResponse.Shows.ToList())
+                    {
+                        <MudItem xs="3">
+                            <MudCard Outlined="true" @onclick="@(() => GoToSeriesPage(series.Id))" Class="custom-card" Style="cursor: pointer; height: 500px">
+                                <MudCardHeader>
+                                    <CardHeaderContent>
+                                        <MudText Typo="Typo.body1">@series?.Name</MudText>
+                                    </CardHeaderContent>
+                                </MudCardHeader>
+                                <MudCardMedia Image="@series?.Poster" Style="height: 100%; object-fit: contain"/>
+                            </MudCard>
+                        </MudItem>
+                    }
+                }
+            </MudGrid>
+            <div class="d-flex justify-content-center mb-4">
+                @RenderPagination()
+            </div>
+        </MudPaper>
+    }
+</MudContainer>
+
+@code {
+
+    protected override async Task OnInitializedAsync()
+    {
+        StartLoading();
+        try
+        {
+            var pagedResponse = await SeriesClient.Get_tv_showsAsync(SelectedPage);
+            PagedSeriesResponse = pagedResponse;
+            await DisplaySuccess("Series loaded.");
+        }
+        catch (APIException ex)
+        {
+            await DisplayError(ErrorHelper.UnwrapError(ex).ToString());
+        }
+        StopLoading();
+    }
+
+    public void Dispose()
+    {
+        ProfileStateService.OnChange -= StateHasChanged;
+    }
+
+    private async Task GoToSeriesPage(int id)
+    {
+        try
+        {
+            NavigationManager.NavigateTo($"/Series?{id}", true);
+            StateHasChanged();
+        }
+        catch (APIException ex)
+        {
+            await DisplayError(ErrorHelper.UnwrapError(ex).ToString());
+        }
+    }
+
+    private async Task PageChanged(int page)
+    {
+        try
+        {
+            SelectedPage = page;
+            var updatedResponse = await SeriesClient.Get_tv_showsAsync(SelectedPage);
+            PagedSeriesResponse = updatedResponse;
+        }
+        catch (APIException ex)
+        {
+            await DisplayError(ErrorHelper.UnwrapError(ex).ToString());
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+
+    private RenderFragment RenderPagination()
+    {
+        return builder =>
+        {
+            builder.OpenComponent(0, typeof(MudPagination));
+            builder.AddAttribute(1, "Color", Color.Primary);
+            builder.AddAttribute(2, "Count", PagedSeriesResponse.Total_pages.GetValueOrDefault());
+            builder.AddAttribute(3, "SelectedChanged", EventCallback.Factory.Create<int>(this, PageChanged));
+            builder.AddAttribute(4, "Selected", SelectedPage);
+            builder.CloseComponent();
+        };
+    }
+
+    [CascadingParameter]
+    public UserInfo? UserInfo { get; set; }
+
+    private ProfileDTO? Profile { get; } = new();
+    private int SelectedPage { get; set; } = 1;
+    private SeriesPaged PagedSeriesResponse { get; set; } = new();
+}

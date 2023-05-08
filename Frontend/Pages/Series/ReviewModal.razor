@@ -1,0 +1,125 @@
+﻿@inject NavigationManager NavigationManager
+@inject ITV_SeriesClient SeriesClient
+@inject IReviews_and_RatingsClient ReviewsAndRatingsClient
+@using Group17.TVSeries
+@using Group17PortalWasm.Helpers
+@using Group17PortalWasm.Services
+@using Group17.ReviewsRatings
+@using APIException = Group17.TVSeries.APIException
+@inherits SeriesModalBase
+
+<div class="modal modal-backdrop modal-background" role="dialog" style="padding: 0; display: @ModalDisplay;">
+    <div style="height: 100%; width: 100%; position: absolute" @onclick="Close"></div>
+    <div class="modal-dialog modal-sm" style="display: table; vertical-align: middle">
+        <MudPaper Class="modal-content" Style="border-radius: 13px; padding: 13px; height: 80%; width: 60vw;">
+            @if (IsLoading)
+            {
+                <MudGrid>
+                    <MudItem xs="12" sm="12">
+                        <MudPaper Class="pa-4 m-4" Style="text-align: center">
+                            <MudProgressLinear Color="Color.Primary" Indeterminate="true"/>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+            }
+            else
+            {
+                <div class="modal-header">
+                    <h3 class="modal-title">Leave a review and rating for: @ModalTitle</h3>
+                    <a class="ml-auto modal-close" @onclick="Close">
+                        &#10006;
+                    </a>
+                </div>
+                <div class="modal-body">
+                    <MudContainer Class="row">
+                        <MudGrid>
+                            <MudItem xs="8" sm="8">
+                                <MudPaper Class="pa-4">
+                                    <MudForm @ref="_form" @bind-IsValid="_success">
+                                        <MudTextField T="string" Label="Review" Required="true"
+                                                      RequiredError="Enter a valid review." ErrorText="Review is required."
+                                                      @bind-Value="Review.Review1" HelperTextOnFocus="true" HelperText="Upload a review!"/>
+                                        <div class="d-flex align-center justify-content-center">
+                                            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                                                       Disabled="@(!_success || _uploading)" OnClick="CreateOrUpdateReview"
+                                                       Class="text-center">
+                                                Leave Review
+                                            </MudButton>
+                                        </div>
+                                    </MudForm>
+                                </MudPaper>
+                            </MudItem>
+                            <MudItem xs="4" sm="4">
+                                <MudPaper Class="pa-4">
+                                    <MudRating MaxValue="10" SelectedValueChanged="CreateOrUpdateRating"></MudRating>
+                                </MudPaper>
+                            </MudItem>
+                        </MudGrid>
+                    </MudContainer>
+                </div>
+            }
+        </MudPaper>
+    </div>
+</div>
+
+@code {
+
+    public async Task Initialise(SeriesInfo series)
+    {
+        Series = series;
+        ModalTitle = $"{Series.Name}";
+        Review = new Review {UserId = UserInfo.UserId, TVSeriesId = Series.Id};
+        Rating = new Rating {UserId = UserInfo.UserId, TVSeriesId = Series.Id};
+        StateHasChanged();
+    }
+
+    private async Task CreateOrUpdateReview()
+    {
+        _uploading = true;
+        try
+        {
+            Review = await ReviewsAndRatingsClient.Post_create_or_update_reviewAsync(Review);
+            await Main.GetReviews();
+            Close();
+        }
+        catch (APIException ex)
+        {
+            await DisplayError(ErrorHelper.UnwrapError(ex).ToString());
+        }
+        finally
+        {
+            _uploading = false;
+        }
+    }
+
+    private async Task CreateOrUpdateRating(int rating)
+    {
+        _uploading = true;
+        try
+        {
+            Rating.Rating1 = rating;
+            Rating = await ReviewsAndRatingsClient.Post_create_or_update_ratingAsync(Rating);
+            await Main.GetAverageRating();
+            Close();
+        }
+        catch (APIException ex)
+        {
+            await DisplayError(ErrorHelper.UnwrapError(ex).ToString());
+        }
+        finally
+        {
+            _uploading = false;
+        }
+    }
+
+    [CascadingParameter]
+    public UserInfo? UserInfo { get; set; }
+
+    private MudForm _form = new();
+    private bool _success;
+    private bool _uploading;
+    private SeriesInfo? Series { get; set; }
+    private Review Review { get; set; } = new();
+    private Rating Rating { get; set; } = new();
+
+}

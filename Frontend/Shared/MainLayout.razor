@@ -1,0 +1,142 @@
+﻿@inject CustomAuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JsRuntime
+@inject ITV_SeriesClient SeriesClient
+@inject IAuthClient AuthClient
+@using Group17.TVSeries
+@using Group17PortalWasm.Helpers
+@using Group17PortalWasm.Services
+@using Group17.Auth
+@using ClaimsIdentity = System.Security.Claims.ClaimsIdentity
+@using APIException = Group17.TVSeries.APIException
+@inherits LayoutComponentBase
+
+<PageTitle>WatchWhiz</PageTitle>
+<MudThemeProvider @ref="_mudThemeProvider" Theme="_myTheme" @bind-IsDarkMode="IsDarkMode"/>
+<MudDialogProvider/>
+<MudSnackbarProvider/>
+
+<CascadingValue Value="UserInfo">
+    <CascadingValue Value="IsDarkMode">
+        <MudLayout>
+            <Sidebar/>
+            <MudMainContent Style="height: 100%; min-height: 100vh">
+                @Body
+            </MudMainContent>
+            <MudAppBar Bottom="true" Fixed="false" Color="Color.Transparent">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.Center" Style="width: 100%">
+                    <MudButton Href="AboutUs">About</MudButton>
+                    <MudButton>GitLab</MudButton>
+                    <div class="flex-grow-1"></div>
+                    <MudIconButton OnClick="@(() => IsDarkMode = !IsDarkMode)" Icon="@(IsDarkMode ? Icons.Material.Filled.DarkMode : Icons.Material.Filled.LightMode)" Class="ma-4" Variant="Variant.Outlined"/>
+                </MudStack>
+            </MudAppBar>
+        </MudLayout>
+    </CascadingValue>
+</CascadingValue>
+
+@code {
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Authenticate();
+        StateHasChanged();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            IsDarkMode = await _mudThemeProvider.GetSystemPreference();
+            await _mudThemeProvider.WatchSystemPreference(OnSystemPreferenceChanged);
+            await JsRuntime.InvokeVoidAsync("scrollToBottom", "chatContainer");
+            StateHasChanged();
+        }
+    }
+
+    private async Task Authenticate()
+    {
+        var authenticationState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var identity = (ClaimsIdentity) authenticationState.User.Identity!;
+        if (identity.IsAuthenticated)
+            UserInfo = new UserInfo(authenticationState);
+        else
+            NavigationManager.ToAbsoluteUri("/Login");
+    }
+
+    private async Task OnSystemPreferenceChanged(bool newValue)
+    {
+        IsDarkMode = newValue;
+        StateHasChanged();
+    }
+
+    private async Task Login()
+    {
+        try
+        {
+            await Task.Delay(400);
+            NavigationManager.NavigateTo("/Login", true);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ErrorHelper.UnwrapError(ex).ToString());
+        }
+    }
+
+    private async Task Logout()
+    {
+        try
+        {
+            await AuthClient.LogoutAsync();
+            await AuthenticationStateProvider.ClearAuthenticationStateAsync();
+            await Task.Delay(400);
+            NavigationManager.NavigateTo("/", true);
+        }
+        catch (APIException ex)
+        {
+            Console.WriteLine(ErrorHelper.UnwrapError(ex).ToString());
+        }
+    }
+
+    private async Task GoToSeriesPage(int id)
+    {
+        try
+        {
+            NavigationManager.NavigateTo($"/Series?{id}", true);
+            StateHasChanged();
+        }
+        catch (APIException ex)
+        {
+            Console.WriteLine(ErrorHelper.UnwrapError(ex).ToString());
+        }
+    }
+
+    private readonly MudTheme _myTheme = new()
+    {
+        Palette = new Palette
+        {
+            Primary = Colors.Green.Darken1,
+            Secondary = Colors.Purple.Darken1,
+            Tertiary = Colors.LightBlue.Default
+        }
+    };
+
+    private async Task<IEnumerable<Series>> Search(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return Array.Empty<Series>();
+
+        var searchSeries = await SeriesClient.Get_series_namesAsync(value);
+        ListOfSeries = searchSeries.Names.ToList();
+        return ListOfSeries;
+    }
+
+    public UserInfo? UserInfo;
+    public bool IsDarkMode;
+
+    private MudThemeProvider _mudThemeProvider;
+    private string Query { get; set; } = "";
+    private Series? SelectedSeries { get; set; }
+    private List<Series> ListOfSeries { get; set; } = new();
+
+}

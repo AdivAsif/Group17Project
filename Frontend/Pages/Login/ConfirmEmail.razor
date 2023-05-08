@@ -1,0 +1,98 @@
+﻿@page "/ConfirmEmail"
+@layout LoginLayout
+@using Group17PortalWasm.Services
+@using Group17.Auth
+@using Group17PortalWasm.Helpers
+@inherits LoginComponentBase
+@inject IAuthClient AuthClient
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<CascadingValue Value="this">
+    <MudContainer>
+        @if (IsLoading)
+        {
+            <MudGrid>
+                <MudItem xs="12" sm="12">
+                    <MudPaper Class="pa-4 m-4" Style="text-align: center">
+                        <MudProgressLinear Color="Color.Primary" Indeterminate="true"/>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+        }
+        else
+        {
+            <MudGrid>
+                <MudItem xs="12" sm="12">
+                    <MudPaper Class="pa-4 m-4">
+                        <div class="d-flex align-center justify-space-between flex-column">
+                            <MudCardHeader>
+                                Confirm email: @UserInfo?.EmailAddress
+                            </MudCardHeader>
+                        </div>
+                        <div class="d-flex align-center justify-space-between flex-column">
+                            @if (string.IsNullOrWhiteSpace(Token))
+                            {
+                                <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="ResendConfirmEmail"
+                                           Class="text-center">
+                                    Click here to send a confirmation email
+                                </MudButton>
+                            }
+                            else
+                            {
+                                <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="HandleConfirmEmail"
+                                           Class="text-center">
+                                    Click here to confirm your email
+                                </MudButton>
+                            }
+                        </div>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+        }
+    </MudContainer>
+</CascadingValue>
+
+@code {
+
+    protected override async Task OnInitializedAsync()
+    {
+        StartLoading();
+        Token = NavigationManager.ToAbsoluteUri(NavigationManager.Uri).Query;
+        StopLoading();
+    }
+
+    [CascadingParameter]
+    public UserInfo? UserInfo { get; set; }
+
+    private async Task ResendConfirmEmail()
+    {
+        try
+        {
+            await AuthClient.ResendConfirmEmailAsync();
+            await DisplaySuccess("Successfully resent confirmation email. Check your inbox.");
+            NavigationManager.NavigateTo("/Profile", true);
+        }
+        catch (APIException ex)
+        {
+            await DisplayError(ErrorHelper.UnwrapError(ex).ToString());
+        }
+    }
+
+    private async Task HandleConfirmEmail()
+    {
+        try
+        {
+            await AuthClient.ConfirmEmailAsync(Token);
+            await DisplaySuccess("Successfully confirmed email.");
+            NavigationManager.NavigateTo("/Profile", true);
+        }
+        catch (APIException ex)
+        {
+            await DisplayError(ErrorHelper.UnwrapError(ex).ToString());
+        }
+    }
+
+    private string? Token { get; set; }
+
+}

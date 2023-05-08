@@ -1,0 +1,90 @@
+﻿@page "/"
+@using Group17.TVSeries
+@using Group17PortalWasm.Helpers
+@using APIException = Group17.Auth.APIException
+@inject IJSRuntime JsRuntime
+@inject ITV_SeriesClient SeriesClient
+@inject NavigationManager NavigationManager
+@layout HomeLayout
+
+<PageTitle>WatchWhiz - TV Series Recommendations</PageTitle>
+
+<div class="home-search-container">
+    <div class="search-bar @(IsDarkMode ? "search-bar-dark" : "")">
+        <MudAutocomplete T="Series" Label="Search TV Series" @bind-Value="SelectedSeries" SearchFunc="Search" ToStringFunc="@(e => e == null ? null : $"{e.Name}")"
+                         ResetValueOnEmptyText="true" AdornmentIcon="@Icons.Material.Filled.Search" AdornmentColor="Color.Primary">
+            <ItemTemplate Context="e">
+                <MudText @onclick="@(async () => await GoToSeriesPage(e.Id))">@e.Name</MudText>
+            </ItemTemplate>
+            <NoItemsTemplate>
+                <MudText Align="Align.Center" Class="px-4 py-1">
+                    No series found.
+                </MudText>
+            </NoItemsTemplate>
+        </MudAutocomplete>
+    </div>
+</div>
+
+<MudCarousel Class="home-carousel" Style="height: 100%; width: 100%;" ShowArrows="@_arrows" ShowBullets="@_bullets" AutoCycle="@_autocycle" TData="object">
+    <div style="background-color: #000000; opacity: @(IsDarkMode ? "0.4" : "")">
+        <MudCarouselItem Transition="_transition" Color="@Color.Primary">
+            <MudImage Src="bb.jpg" ObjectFit="ObjectFit.Contain"></MudImage>
+        </MudCarouselItem>
+        <MudCarouselItem Transition="_transition" Color="@Color.Secondary">
+            <MudImage Src="got.jpg" ObjectFit="ObjectFit.Contain"></MudImage>
+        </MudCarouselItem>
+        <MudCarouselItem Transition="_transition" Color="Color.Tertiary">
+            <MudImage Src="st.jpg" ObjectFit="ObjectFit.Contain"></MudImage>
+        </MudCarouselItem>
+        <MudCarouselItem Transition="_transition" Color="Color.Default">
+            <MudImage Src="wd.jpg" ObjectFit="ObjectFit.Contain"></MudImage>
+        </MudCarouselItem>
+    </div>
+</MudCarousel>
+
+@code {
+
+    private readonly bool _arrows = true;
+    private readonly bool _bullets = true;
+    private readonly bool _autocycle = true;
+    private readonly Transition _transition = Transition.Slide;
+
+    protected override async Task OnInitializedAsync()
+    {
+        StateHasChanged();
+    }
+
+    private async Task GoToSeriesPage(int id)
+    {
+        _searching = true;
+        try
+        {
+            NavigationManager.NavigateTo($"/Series?{id}", true);
+            StateHasChanged();
+        }
+        catch (APIException ex)
+        {
+            Console.WriteLine(ErrorHelper.UnwrapError(ex).ToString());
+        }
+        _searching = false;
+    }
+
+    private async Task<IEnumerable<Series>> Search(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return Array.Empty<Series>();
+
+        var searchSeries = await SeriesClient.Get_series_namesAsync(value);
+        ListOfSeries = searchSeries.Names.ToList();
+        return ListOfSeries;
+    }
+
+    [CascadingParameter]
+    public bool IsDarkMode { get; set; }
+
+    private bool _searching;
+    private string Query { get; set; } = "";
+    private Series? SelectedSeries { get; set; }
+    private List<Series> ListOfSeries { get; set; } = new();
+
+}

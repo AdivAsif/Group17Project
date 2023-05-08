@@ -1,0 +1,78 @@
+﻿@inject IJSRuntime JsRuntime
+@inject NavigationManager NavigationManager
+@inherits LayoutComponentBase
+
+<PageTitle>WatchWhiz</PageTitle>
+<MudThemeProvider @ref="_mudThemeProvider" Theme="_myTheme" @bind-IsDarkMode="IsDarkMode"/>
+<MudDialogProvider/>
+<MudSnackbarProvider/>
+
+<CascadingValue Value="IsDarkMode">
+    <MudLayout>
+        <MudAppBar Class="@(IsDarkMode ? "home-bar-dark" : "home-bar-light")">
+            <MudIconButton Color="Color.Secondary" Variant="Variant.Filled" Edge="Edge.Start">
+                <MudImage Src="icon.png" ObjectFit="ObjectFit.Contain" Width="30"/>
+            </MudIconButton>
+            <MudCardHeader Class="login-link" Style="font-size: 20px">WatchWhiz</MudCardHeader>
+            <MudSpacer/>
+            <MudTooltip Text="Click to Login or Register" Placement="Placement.Left" Color="Color.Secondary">
+                <MudIconButton Icon="@Icons.Material.Filled.Login" Color="Color.Primary" @onclick="GoToLogin"/>
+            </MudTooltip>
+        </MudAppBar>
+        <MudMainContent Style="height: 100%; min-height: 100vh; position: relative;">
+            @Body
+        </MudMainContent>
+        <MudAppBar Bottom="true" Fixed="false" Class="@(IsDarkMode ? "home-bar-dark" : "home-bar-light")">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.Center" Style="width: 100%">
+                <MudButton Href="AboutUs">About</MudButton>
+                <MudButton>GitLab</MudButton>
+                <div class="flex-grow-1"></div>
+                <MudIconButton OnClick="@(() => IsDarkMode = !IsDarkMode)" Icon="@(IsDarkMode ? Icons.Material.Filled.DarkMode : Icons.Material.Filled.LightMode)" Class="ma-4" Variant="Variant.Outlined"/>
+            </MudStack>
+        </MudAppBar>
+    </MudLayout>
+</CascadingValue>
+
+@code {
+
+    protected override async Task OnInitializedAsync()
+    {
+        StateHasChanged();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            IsDarkMode = await _mudThemeProvider.GetSystemPreference();
+            await _mudThemeProvider.WatchSystemPreference(OnSystemPreferenceChanged);
+            await JsRuntime.InvokeVoidAsync("scrollToBottom", "chatContainer");
+            StateHasChanged();
+        }
+    }
+
+    private void GoToLogin()
+    {
+        NavigationManager.NavigateTo("/Login", true);
+    }
+
+    private async Task OnSystemPreferenceChanged(bool newValue)
+    {
+        IsDarkMode = newValue;
+        StateHasChanged();
+    }
+
+    private readonly MudTheme _myTheme = new()
+    {
+        Palette = new Palette
+        {
+            Primary = Colors.Green.Darken1,
+            Secondary = Colors.Purple.Darken1,
+            Tertiary = Colors.LightBlue.Default
+        }
+    };
+
+    public bool IsDarkMode;
+    private MudThemeProvider _mudThemeProvider;
+
+}

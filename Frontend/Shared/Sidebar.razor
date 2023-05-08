@@ -1,0 +1,81 @@
+﻿@inject NavigationManager NavigationManager
+@using Group17PortalWasm.Services
+@using Group17.Auth
+@using Group17PortalWasm.Helpers
+@inherits DefaultComponentBase
+@inject CustomAuthenticationStateProvider AuthenticationStateProvider
+@inject IAuthClient AuthClient
+
+<SearchComponent @ref="SearchComponent"></SearchComponent>
+<MudDrawer @bind-Open="@_open" Elevation="1" Variant="DrawerVariant.Mini" OpenMiniOnHover="true" Fixed="true">
+    <MudNavMenu Class="position-relative" Style="height: 100%">
+        @if (UserInfo != null)
+        {
+            <MudNavLink Match="NavLinkMatch.All" Href="/Profile" Icon="@Icons.Material.Filled.Person" Style="height: 60px">Profile</MudNavLink>
+        }
+        <MudNavLink Match="NavLinkMatch.All" OnClick="OpenSearchComponent" Icon="@Icons.Material.Filled.Search" Style="height: 60px">Search</MudNavLink>
+        <MudNavLink Match="NavLinkMatch.All" Href="/Shows" Icon="@Icons.Material.Filled.LiveTv" Style="height: 60px">Shows</MudNavLink>
+        @if (UserInfo != null)
+        {
+            <MudNavLink Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Logout" OnClick="Logout" Style="position: absolute; bottom: 0; height: 60px">Logout</MudNavLink>
+        }
+        else
+        {
+            <MudNavLink Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Login" OnClick="Login" Style="position: absolute; bottom: 0; height: 60px">Login/Register</MudNavLink>
+        }
+    </MudNavMenu>
+</MudDrawer>
+
+@code {
+
+    protected override async Task OnInitializedAsync()
+    {
+    }
+
+    private async Task Login()
+    {
+        try
+        {
+            await Task.Delay(400);
+            NavigationManager.NavigateTo("/Login", true);
+        }
+        catch (APIException ex)
+        {
+            await DisplayError(ErrorHelper.UnwrapError(ex).ToString());
+        }
+    }
+
+    private async Task Logout()
+    {
+        try
+        {
+            await AuthClient.LogoutAsync();
+            await AuthenticationStateProvider.ClearAuthenticationStateAsync();
+            await DisplaySuccess("Successfully logged out.");
+            await Task.Delay(400);
+            NavigationManager.NavigateTo("/", true);
+        }
+        catch (APIException ex)
+        {
+            await DisplayError(ErrorHelper.UnwrapError(ex).ToString());
+        }
+    }
+
+    private async Task OpenSearchComponent()
+    {
+        SearchComponent.Close();
+        SearchComponent.Open();
+    }
+
+    void ToggleDrawer()
+    {
+        _open = !_open;
+    }
+
+    [CascadingParameter]
+    public UserInfo? UserInfo { get; set; }
+
+    private bool _open;
+    private SearchComponent SearchComponent { get; set; } = new();
+
+}

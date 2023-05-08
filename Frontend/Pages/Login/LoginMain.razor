@@ -1,0 +1,129 @@
+﻿@page "/Login"
+@layout LoginLayout
+@using Group17PortalWasm.Helpers
+@using Group17PortalWasm.Services
+@using Group17.Auth
+@using ClaimsIdentity = System.Security.Claims.ClaimsIdentity
+@using System.ComponentModel.DataAnnotations
+@inherits LoginComponentBase
+@inject IAuthClient AuthClient
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<CascadingValue Value="this">
+    <MudContainer>
+        @if (IsLoading)
+        {
+            <MudGrid>
+                <MudItem xs="12" sm="12">
+                    <MudPaper Class="pa-4 m-4" Style="text-align: center">
+                        <MudProgressLinear Color="Color.Primary" Indeterminate="true"/>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+        }
+        else
+        {
+            <RegisterModal @ref="_registerModal"/>
+            <ForgotPasswordModal @ref="_forgotPasswordModal"/>
+            <MudGrid>
+                <MudItem xs="12" sm="12">
+                    <MudPaper Class="pa-4 m-4">
+                        <div class="d-flex align-center justify-space-between flex-column">
+                            <MudCardHeader>
+                                WatchWhiz
+                            </MudCardHeader>
+                        </div>
+                        <MudForm @ref="_form" @bind-IsValid="@_success" @bind-Errors="@_errors" Model="_userLoginRequestDto">
+                            <MudTextField T="string" Label="Email" @bind-Value="_userLoginRequestDto.EmailAddress"
+                                          Required="true" RequiredError="Email is required."
+                                          Validation="@(new EmailAddressAttribute {ErrorMessage = "The email address is invalid."})"/>
+                            <MudTextField T="string" Label="Password" @bind-Value="@_userLoginRequestDto.Password"
+                                          Required="true" RequiredError="Password is required." ErrorText="Password is required." InputType="InputType.Password"/>
+                            <div class="d-flex align-center justify-space-between flex-column">
+                                <MudButton Variant="Variant.Filled" Color="Color.Secondary" Disabled="@(!_success || _loggingIn)"
+                                           @onclick="LoginUser" Class="text-center first-form-button">
+                                    Login
+                                </MudButton>
+                                <a class="login-link" @onclick="OpenForgotPasswordModal" style="cursor: pointer">Forgot your password?</a>
+                                <hr class="login-line"/>
+                                <MudButton Variant="Variant.Filled" Color="Color.Tertiary" @onclick="OpenRegisterModal" Class="text-center">
+                                    Register
+                                </MudButton>
+                            </div>
+                        </MudForm>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+        }
+    </MudContainer>
+</CascadingValue>
+
+@code {
+
+    protected override async Task OnInitializedAsync()
+    {
+        StartLoading();
+        var authenticationState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var identity = (ClaimsIdentity?) authenticationState.User.Identity;
+        if (identity is {IsAuthenticated: true })
+        {
+            Console.WriteLine("User is already logged in.");
+            NavigationManager.NavigateTo("/Profile");
+        }
+        StopLoading();
+    }
+
+    private async Task OpenRegisterModal()
+    {
+        _registerModal.Close();
+        await _registerModal.Initialise();
+        _registerModal.Open();
+    }
+
+    private async Task OpenForgotPasswordModal()
+    {
+        _forgotPasswordModal.Close();
+        await _forgotPasswordModal.Initialise();
+        _forgotPasswordModal.Open();
+    }
+
+    public async Task LoginUser()
+    {
+        _loggingIn = true;
+        try
+        {
+            var user = await AuthClient.LoginAsync(_userLoginRequestDto);
+            await ((CustomAuthenticationStateProvider) AuthenticationStateProvider).SetAuthenticationStateAsync(user.Data);
+            if (NavigationManager.TryGetQueryString<string>("redirect", out var redirect))
+            {
+                if (redirect != null) NavigationManager.NavigateTo(redirect);
+            }
+            else
+            {
+                var authenticationState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+                var identity = (ClaimsIdentity?) authenticationState.User.Identity;
+                if (identity is {IsAuthenticated: true })
+                {
+                    var userInfo = new UserInfo(authenticationState);
+                    NavigationManager.NavigateTo(userInfo.IsAdmin ? "/Administration" : "/Profile");
+                }
+            }
+            await DisplaySuccess("Successfully logged in.");
+        }
+        catch (APIException ex)
+        {
+            await DisplayError(ErrorHelper.UnwrapError(ex).ToString());
+        }
+        _loggingIn = false;
+    }
+
+    private bool _success;
+    private bool _loggingIn;
+    private string[] _errors = {};
+    private MudForm _form = new();
+    private RegisterModal _registerModal = new();
+    private ForgotPasswordModal _forgotPasswordModal = new();
+    private readonly UserLoginRequestDTO _userLoginRequestDto = new();
+
+}

@@ -1,0 +1,134 @@
+﻿@inject IAuthClient AuthClient
+@using Group17PortalWasm.Helpers
+@using Group17PortalWasm.Services
+@using Group17.Auth
+@using ClaimsIdentity = System.Security.Claims.ClaimsIdentity
+@using System.ComponentModel.DataAnnotations
+@inherits LoginModalBase
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<div class="modal modal-backdrop modal-background" role="dialog" style="padding: 0; display: @ModalDisplay;">
+    <div style="height: 100%; width: 100%; position: absolute" @onclick="Close"></div>
+    <div class="modal-dialog modal-sm" style="display: table; vertical-align: middle">
+        <MudPaper class="modal-content" style="border-radius: 13px; padding: 13px; height: 80%; width: 60vw;">
+            @if (IsLoading)
+            {
+                <MudGrid>
+                    <MudItem xs="12" sm="12">
+                        <MudPaper Class="pa-4 m-4" Style="text-align: center">
+                            <MudProgressLinear Color="Color.Primary" Indeterminate="true"/>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+            }
+            else
+            {
+                <div class="modal-header">
+                    <h3 class="modal-title">@ModalTitle</h3>
+                    <a class="ml-auto modal-close" @onclick="Close">
+                        &#10006;
+                    </a>
+                </div>
+                <div class="modal-body">
+                    <MudContainer Class="row">
+                        <MudGrid>
+                            <MudItem xs="12" sm="12">
+                                <MudPaper Class="pa-4">
+                                    <MudForm @ref="_form" @bind-IsValid="@_success" @bind-Errors="@_errors" Model="_userRegisterRequestDto">
+                                        <MudTextField T="string" Label="First Name" @bind-Value="_userRegisterRequestDto.FirstName"
+                                                      Required="true" RequiredError="First name is required." ErrorText="First name is required."/>
+                                        <MudTextField T="string" Label="Surname" @bind-Value="_userRegisterRequestDto.Surname"
+                                                      Required="true" RequiredError="Surname is required." ErrorText="Surname is required."/>
+                                        <MudTextField T="string" Label="Email" @bind-Value="_userRegisterRequestDto.EmailAddress"
+                                                      Required="true" RequiredError="Email is required." ErrorText="Email is required."
+                                                      Validation="@(new EmailAddressAttribute {ErrorMessage = "The email address is invalid."})"/>
+                                        <MudTextField T="string" Label="Password" @bind-Value="@_userRegisterRequestDto.Password"
+                                                      Required="true" HelperText="Choose a strong password (at least 1 number and special character)"
+                                                      RequiredError="Password is required." ErrorText="Password is required." InputType="InputType.Password"
+                                                      Validation="@(new Func<string, IEnumerable<string>>(PasswordStrength))"/>
+                                        <MudTextField T="string" Label="Confirm Password" @bind-Value="_userRegisterRequestDto.ConfirmPassword" Required="true"
+                                                      RequiredError="Repeat the password." HelperText="Repeat the password." InputType="InputType.Password"
+                                                      HelperTextOnFocus="true" Validation="@(new Func<string, string>(PasswordMatch))"/>
+                                        <div class="d-flex align-center justify-content-center">
+                                            <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(!_success || _registering)"
+                                                       @onclick="RegisterUser" Class="text-center">
+                                                Register
+                                            </MudButton>
+                                        </div>
+                                    </MudForm>
+                                </MudPaper>
+                            </MudItem>
+                        </MudGrid>
+                    </MudContainer>
+                </div>
+            }
+        </MudPaper>
+    </div>
+</div>
+
+@code {
+
+    public async Task Initialise()
+    {
+        ModalTitle = "Register";
+        StateHasChanged();
+    }
+
+    public async Task RegisterUser()
+    {
+        _registering = true;
+        try
+        {
+            var user = await AuthClient.CreateUserAsync(_userRegisterRequestDto);
+            await ((CustomAuthenticationStateProvider) AuthenticationStateProvider).SetAuthenticationStateAsync(user.Data);
+            if (NavigationManager.TryGetQueryString<string>("redirect", out var redirect))
+            {
+                if (redirect != null) NavigationManager.NavigateTo(redirect);
+            }
+            else
+            {
+                var authenticationState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+                var identity = (ClaimsIdentity?) authenticationState.User.Identity;
+                if (identity is {IsAuthenticated: true })
+                {
+                    var userInfo = new UserInfo(authenticationState);
+                    NavigationManager.NavigateTo(userInfo.IsAdmin ? "/Administration" : "/Profile");
+                }
+            }
+            await DisplaySuccess("User created.");
+        }
+        catch (APIException ex)
+        {
+            await DisplayError(ErrorHelper.UnwrapError(ex).ToString());
+        }
+        _registering = false;
+    }
+
+    private IEnumerable<string> PasswordStrength(string pw)
+    {
+        if (string.IsNullOrWhiteSpace(pw))
+        {
+            yield return "Password is required.";
+            yield break;
+        }
+        if (pw.Length < 8)
+            yield return "The password must be at least 8 characters.";
+        if (!pw.Any(char.IsDigit))
+            yield return "The password must contain at least 1 number.";
+        if (pw.All(char.IsLetterOrDigit))
+            yield return "The password must contain at least 1 special character.";
+    }
+
+    private string? PasswordMatch(string confirmPw)
+    {
+        return _userRegisterRequestDto.Password != confirmPw ? "The passwords do not match." : null;
+    }
+
+    private bool _success;
+    private bool _registering;
+    private string[] _errors = {};
+    private MudForm _form = new();
+    private readonly UserRegisterRequestDTO _userRegisterRequestDto = new();
+
+}

@@ -1,0 +1,320 @@
+﻿@page "/Recommendations"
+@inject NavigationManager NavigationManager
+@inherits RecommendationsComponentBase
+@inject ProfileStateService ProfileStateService
+@inject IProfileClient ProfileClient
+@using Group17PortalWasm.Services
+@using Group17.Profile
+@using Group17PortalWasm.Helpers
+@using System.Globalization
+@implements IDisposable
+
+<MudContainer MaxWidth="MaxWidth.Large">
+    @if (IsLoading)
+    {
+        <MudGrid>
+            <MudItem xs="12" sm="12">
+                <MudPaper Class="pa-4 m-4" Style="text-align: center">
+                    <MudProgressLinear Color="Color.Primary" Indeterminate="true"/>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
+    else
+    {
+        <MudGrid>
+            @if (Profile == null)
+            {
+                <MudItem xs="12">
+                    <MudAlert Severity="Severity.Warning">Profile not set yet. You must update your profile to use Mood Match.</MudAlert>
+                </MudItem>
+            }
+            <MudItem xs="12">
+                <MudPaper Class="pa-4">
+                    <MudGrid Class="position-relative">
+                        <div class="d-flex justify-content-center profile-avatar-container profile-backdrop">
+                            @if (!string.IsNullOrWhiteSpace(Profile?.BannerUrl))
+                            {
+                                <MudImage Src="@(!string.IsNullOrWhiteSpace(_uploadedBannerPictureUri) ? _uploadedBannerPictureUri : Profile?.BannerUrl)" Alt="" Class="profile-backdrop"></MudImage>
+                            }
+                            else
+                            {
+                                <MudImage Src="@(_uploadedBannerPictureUri)" Alt="" Class="profile-backdrop"></MudImage>
+                            }
+                            <MudFileUpload T="IBrowserFile" Class="profile-picture-button" FilesChanged="LoadBannerPictureFile">
+                                <ButtonTemplate>
+                                    <MudButton HtmlTag="label" Color="Color.Transparent" Variant="Variant.Outlined"
+                                               Style="width: 100%; height: 100%" for="@context">
+                                    </MudButton>
+                                </ButtonTemplate>
+                            </MudFileUpload>
+                        </div>
+                        <MudItem xs="3"></MudItem>
+                        <MudItem xs="6" Class="d-flex justify-content-center">
+                            <div class="profile-avatar-container">
+                                <MudAvatar Color="Color.Primary" Style="width: 200px; height: 200px">
+                                    @if (!string.IsNullOrWhiteSpace(Profile?.ProfilePictureUrl))
+                                    {
+                                        <MudImage Src="@(!string.IsNullOrWhiteSpace(_uploadedProfilePictureUri) ? _uploadedProfilePictureUri : Profile?.ProfilePictureUrl)"></MudImage>
+                                    }
+                                    else
+                                    {
+                                        if (!string.IsNullOrWhiteSpace(_uploadedProfilePictureUri))
+                                        {
+                                            <MudImage Src="@(_uploadedProfilePictureUri)"></MudImage>
+                                        }
+                                        else
+                                        {
+                                            @UserInfo?.Username?[0]
+                                        }
+                                    }
+                                </MudAvatar>
+                                <MudFileUpload T="IBrowserFile" Class="profile-picture-button" FilesChanged="LoadProfilePictureFile">
+                                    <ButtonTemplate>
+                                        <MudFab HtmlTag="label" Color="Color.Transparent" Icon="@Icons.Material.Filled.AddCircleOutline"
+                                                Style="width: 100%; height: 100%" for="@context">
+                                        </MudFab>
+                                    </ButtonTemplate>
+                                </MudFileUpload>
+                            </div>
+                        </MudItem>
+                        <MudItem xs="3" Class="position-relative">
+                            @if (_profilePictureFile != null)
+                            {
+                                <MudButton Color="Color.Secondary" Variant="Variant.Filled" OnClick="UploadProfilePicture" Disabled="_uploading" Style="position: absolute; bottom: 0; right: 0">Upload Profile Picture</MudButton>
+                            }
+                            @if (_bannerPictureFile != null)
+                            {
+                                <MudButton Color="Color.Secondary" Variant="Variant.Filled" OnClick="UploadBannerPicture" Disabled="_uploading" Style="position: absolute; top: 0; right: 0">Upload Banner</MudButton>
+                            }
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" sm="12">
+                <MudPaper Class="pa-4">
+                    @if (Profile == null)
+                    {
+                        <MudForm @ref="_form" Model="NewDetails">
+                            <MudTextField T="string" Label="First Name" Disabled="true" Value="UserInfo.Firstname"/>
+                            <MudTextField T="string" Label="Surname" Disabled="true" Value="UserInfo.Surname"/>
+                            <MudTextField T="string" Label="Email Address" Disabled="true" Value="UserInfo.EmailAddress"/>
+                            <MudSelect T="string" Label="Gender" AnchorOrigin="Origin.TopCenter" @bind-Value="NewDetails.Gender">
+                                <MudSelectItem Value="@("Male")"/>
+                                <MudSelectItem Value="@("Female")"/>
+                                <MudSelectItem Value="@("Other")"/>
+                            </MudSelect>
+                            <MudSelect T="string" Label="Pronoun" AnchorOrigin="Origin.TopCenter" @bind-Value="NewDetails.Pronoun">
+                                <MudSelectItem Value="@("He/him")"/>
+                                <MudSelectItem Value="@("She/her")"/>
+                                <MudSelectItem Value="@("They/them")"/>
+                                <MudSelectItem Value="@("Other")"/>
+                            </MudSelect>
+                            <MudTextField T="string" Label="Biography" @bind-Value="NewDetails.Biography" Placeholder="Enter your biography here."/>
+                            <MudDatePicker Label="Date Of Birth" @bind-Date="_dob"/>
+                        </MudForm>
+                    }
+                    else
+                    {
+                        <MudForm @ref="_form" Model="Profile">
+                            <MudTextField T="string" Label="First Name" Disabled="true" Value="UserInfo.Firstname"/>
+                            <MudTextField T="string" Label="Surname" Disabled="true" Value="UserInfo.Surname"/>
+                            <MudTextField T="string" Label="Email Address" Disabled="true" Value="UserInfo.EmailAddress"/>
+                            <MudSelect T="string" Label="Gender" AnchorOrigin="Origin.TopCenter" @bind-Value="Profile.Gender">
+                                <MudSelectItem Value="@("Male")"/>
+                                <MudSelectItem Value="@("Female")"/>
+                                <MudSelectItem Value="@("Other")"/>
+                            </MudSelect>
+                            <MudSelect T="string" Label="Pronoun" AnchorOrigin="Origin.TopCenter" @bind-Value="Profile.Pronoun">
+                                <MudSelectItem Value="@("He/him")"/>
+                                <MudSelectItem Value="@("She/her")"/>
+                                <MudSelectItem Value="@("They/them")"/>
+                                <MudSelectItem Value="@("Other")"/>
+                            </MudSelect>
+                            <MudTextField T="string" Label="Biography" @bind-Value="Profile.Biography"/>
+                            <MudDatePicker Label="Date Of Birth" @bind-Date="_dob" Culture="CultureInfo.CurrentCulture" DateFormat="dd/MM/yyyy"/>
+                        </MudForm>
+                    }
+                </MudPaper>
+                <MudPaper Class="pa-4 mt-4 d-flex justify-content-center">
+                    <MudButton Disabled="@_uploading" Variant="Variant.Filled" Color="Color.Primary" DisableElevation="true" OnClick="@(CreateOrUpdateProfile)">Update Profile</MudButton>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
+</MudContainer>
+
+@code {
+
+    protected override async Task OnInitializedAsync()
+    {
+        StartLoading();
+        ProfileStateService.OnChange += StateHasChanged;
+        try
+        {
+            var profileInfo = await ProfileStateService.GetProfileInfo();
+            if (profileInfo == null)
+            {
+                var profileAsync = await ProfileClient.GetProfileForUserAsync();
+                Profile = profileAsync.Data;
+                _dob = Profile?.DoB.GetValueOrDefault().Date;
+                await ProfileStateService.UpdateProfileInfoAsync(new ProfileInfo {ProfileDetails = Profile});
+            }
+            else
+            {
+                Profile = profileInfo.ProfileDetails;
+                _dob = profileInfo.ProfileDetails?.DoB.GetValueOrDefault().Date;
+            }
+        }
+        catch (APIException ex)
+        {
+            await DisplayError(ErrorHelper.UnwrapError(ex).ToString());
+        }
+        StopLoading();
+    }
+
+    public void Dispose()
+    {
+        ProfileStateService.OnChange -= StateHasChanged;
+    }
+
+    private async Task CreateOrUpdateProfile()
+    {
+        _uploading = true;
+        try
+        {
+            if (Profile == null)
+            {
+                NewDetails.DoB = _dob;
+                var profileAsync = await ProfileClient.CreateOrUpdateProfileAsync(NewDetails);
+                Profile = profileAsync.Data;
+                await ProfileStateService.UpdateProfileInfoAsync(new ProfileInfo {ProfileDetails = Profile});
+                await DisplaySuccess("Profile successfully updated.");
+            }
+            else
+            {
+                Profile.DoB = _dob;
+                var profileAsync = await ProfileClient.CreateOrUpdateProfileAsync(Profile);
+                _uploading = true;
+                Profile = profileAsync.Data;
+                await ProfileStateService.UpdateProfileInfoAsync(new ProfileInfo {ProfileDetails = Profile});
+                _uploading = false;
+                await DisplaySuccess("Profile successfully updated.");
+            }
+            StateHasChanged();
+        }
+        catch (APIException ex)
+        {
+            await DisplayError(ErrorHelper.UnwrapError(ex).ToString());
+        }
+        _uploading = false;
+    }
+
+    private async Task UploadProfilePicture()
+    {
+        _uploading = true;
+        try
+        {
+            var profile = await ProfileClient.UploadProfilePictureAsync(_profilePictureFile);
+            if (Profile == null)
+            {
+                Profile = profile.Data;
+                if (profile.Data.DoB == null)
+                    _dob = DateTime.Now;
+            }
+            else
+            {
+                Profile.ProfilePictureUrl = profile.Data.ProfilePictureUrl;
+            }
+            await ProfileStateService.UpdateProfileInfoAsync(new ProfileInfo {ProfileDetails = Profile});
+            _profilePictureFile = null;
+            await DisplaySuccess("Successfully uploaded profile picture.");
+        }
+        catch (APIException ex)
+        {
+            await DisplayError(ErrorHelper.UnwrapError(ex).ToString());
+        }
+        finally
+        {
+            _uploading = false;
+        }
+    }
+
+    private async Task UploadBannerPicture()
+    {
+        _uploading = true;
+        try
+        {
+            var profile = await ProfileClient.UploadBannerPictureAsync(_bannerPictureFile);
+            if (Profile == null)
+            {
+                Profile = profile.Data;
+                if (profile.Data.DoB == null)
+                    _dob = DateTime.Now;
+            }
+            else
+            {
+                Profile.BannerUrl = profile.Data.BannerUrl;
+            }
+            await ProfileStateService.UpdateProfileInfoAsync(new ProfileInfo {ProfileDetails = Profile});
+            _bannerPictureFile = null;
+            await DisplaySuccess("Successfully uploaded banner.");
+        }
+        catch (APIException ex)
+        {
+            await DisplayError(ErrorHelper.UnwrapError(ex).ToString());
+        }
+        finally
+        {
+            _uploading = false;
+        }
+    }
+
+    private async Task LoadProfilePictureFile(IBrowserFile e)
+    {
+        var ms = new MemoryStream();
+        await e.OpenReadStream(1000 * 10 * 1024).CopyToAsync(ms);
+        try
+        {
+            ms.Position = 0;
+            _profilePictureFile = new FileParameter(ms, e.Name, e.ContentType);
+            _uploadedProfilePictureUri = $"data:image/jpeg;base64, {Convert.ToBase64String(ms.ToArray())}";
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            await DisplayError(ErrorHelper.UnwrapError(ex).ToString());
+        }
+    }
+
+    private async Task LoadBannerPictureFile(IBrowserFile e)
+    {
+        var ms = new MemoryStream();
+        await e.OpenReadStream(1000 * 10 * 1024).CopyToAsync(ms);
+        try
+        {
+            ms.Position = 0;
+            _bannerPictureFile = new FileParameter(ms, e.Name, e.ContentType);
+            _uploadedBannerPictureUri = $"data:image/jpeg;base64, {Convert.ToBase64String(ms.ToArray())}";
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            await DisplayError(ErrorHelper.UnwrapError(ex).ToString());
+        }
+    }
+
+    [CascadingParameter]
+    public UserInfo? UserInfo { get; set; }
+
+    private ProfileDTO? Profile { get; set; } = new();
+    private ProfileDTO NewDetails { get; } = new();
+    private DateTime? _dob;
+
+    private MudForm _form = new();
+    private FileParameter? _profilePictureFile;
+    private FileParameter? _bannerPictureFile;
+    private string? _uploadedProfilePictureUri;
+    private string? _uploadedBannerPictureUri;
+    private bool _uploading;
+}

@@ -1,0 +1,106 @@
+﻿@page "/Search"
+@inject NavigationManager NavigationManager
+@inherits SearchComponentBase
+@inject ProfileStateService ProfileStateService
+@inject ITV_SeriesClient SeriesClient
+@using Group17.TVSeries
+@using Group17PortalWasm.Helpers
+@using Group17PortalWasm.Services
+@using Group17.Profile
+@using APIException = Group17.Profile.APIException
+@implements IDisposable
+
+<MudContainer MaxWidth="MaxWidth.Large">
+    @if (IsLoading)
+    {
+        <MudGrid>
+            <MudItem xs="12" sm="12">
+                <MudPaper Class="pa-4 m-4" Style="text-align: center">
+                    <MudProgressLinear Color="Color.Primary" Indeterminate="true"/>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
+    else
+    {
+        <MudGrid>
+            @if (Profile == null)
+            {
+                <MudItem xs="12">
+                    <MudAlert Severity="Severity.Warning">Profile not set yet. You must update your profile to use Mood Match.</MudAlert>
+                </MudItem>
+            }
+            <MudItem xs="12">
+                <MudPaper Class="pa-4">
+                    <MudAutocomplete T="Series" Label="Search TV Series" @bind-Value="SelectedSeries" SearchFunc="Search" ToStringFunc="@(e => e == null ? null : $"{e.Name}")"
+                                     ResetValueOnEmptyText="true" AdornmentIcon="@Icons.Material.Filled.Search" AdornmentColor="Color.Primary">
+                        <ItemTemplate Context="e">
+                            <MudText @onclick="@(async () => await GoToSeriesPage(e.Id))">@e.Name</MudText>
+                        </ItemTemplate>
+                        <NoItemsTemplate>
+                            <MudText Align="Align.Center" Class="px-4 py-1">
+                                No series found.
+                            </MudText>
+                        </NoItemsTemplate>
+                    </MudAutocomplete>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
+</MudContainer>
+
+@code {
+
+    protected override async Task OnInitializedAsync()
+    {
+        StartLoading();
+        try
+        {
+        }
+        catch (APIException ex)
+        {
+            await DisplayError(ErrorHelper.UnwrapError(ex).ToString());
+        }
+        StopLoading();
+    }
+
+    public void Dispose()
+    {
+        ProfileStateService.OnChange -= StateHasChanged;
+    }
+
+    private async Task GoToSeriesPage(int id)
+    {
+        _searching = true;
+        try
+        {
+            NavigationManager.NavigateTo($"/Series?{id}", true);
+            StateHasChanged();
+        }
+        catch (APIException ex)
+        {
+            await DisplayError(ErrorHelper.UnwrapError(ex).ToString());
+        }
+        _searching = false;
+    }
+
+    private async Task<IEnumerable<Series>> Search(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return Array.Empty<Series>();
+
+        var searchSeries = await SeriesClient.Get_series_namesAsync(value);
+        ListOfSeries = searchSeries.Names.ToList();
+        return ListOfSeries;
+    }
+
+    [CascadingParameter]
+    public UserInfo? UserInfo { get; set; }
+
+    private ProfileDTO? Profile { get; } = new();
+    private MudForm _form = new();
+    private bool _searching;
+    private string Query { get; set; } = "";
+    private Series? SelectedSeries { get; set; }
+    private List<Series> ListOfSeries { get; set; } = new();
+}

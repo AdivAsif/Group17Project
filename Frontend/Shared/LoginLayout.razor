@@ -1,0 +1,80 @@
+﻿@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JsRuntime
+@using Group17PortalWasm.Services
+@using System.Security.Claims
+@inherits LayoutComponentBase
+
+<PageTitle>WatchWhiz - Login</PageTitle>
+<MudThemeProvider @ref="_mudThemeProvider" Theme="_myTheme" @bind-IsDarkMode="_isDarkMode"/>
+<MudDialogProvider/>
+<MudSnackbarProvider/>
+
+<CascadingValue Value="UserInfo">
+    <MudLayout>
+        <MudMainContent Style="height: 100vh">
+            @Body
+        </MudMainContent>
+    </MudLayout>
+</CascadingValue>
+
+<MudAppBar Bottom="true" Fixed="false" Color="Color.Transparent">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.Center" Style="width: 100%">
+        <MudButton Href="AboutUs">About</MudButton>
+        <MudButton>GitLab</MudButton>
+        <div class="flex-grow-1"></div>
+        <MudIconButton OnClick="@(() => _isDarkMode = !_isDarkMode)" Icon="@(_isDarkMode ? Icons.Material.Filled.DarkMode : Icons.Material.Filled.LightMode)" Class="ma-4" Variant="Variant.Outlined"/>
+    </MudStack>
+</MudAppBar>
+
+@code {
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Authenticate();
+        StateHasChanged();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _isDarkMode = await _mudThemeProvider.GetSystemPreference();
+            await _mudThemeProvider.WatchSystemPreference(OnSystemPreferenceChanged);
+            await JsRuntime.InvokeVoidAsync("scrollToBottom", "chatContainer");
+            StateHasChanged();
+        }
+    }
+
+    private async Task Authenticate()
+    {
+        var authenticationState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var identity = (ClaimsIdentity) authenticationState.User.Identity!;
+        if (identity.IsAuthenticated)
+            UserInfo = new UserInfo(authenticationState);
+        else
+            NavigationManager.ToAbsoluteUri("/Login");
+    }
+
+    private async Task OnSystemPreferenceChanged(bool newValue)
+    {
+        _isDarkMode = newValue;
+        StateHasChanged();
+    }
+
+    public UserInfo? UserInfo;
+
+    readonly MudTheme _myTheme = new()
+    {
+        Palette = new Palette
+        {
+            Primary = Colors.Green.Darken1,
+            Secondary = Colors.Purple.Darken1,
+            Tertiary = Colors.LightBlue.Default
+        }
+    };
+
+    private bool _isDarkMode;
+    private MudThemeProvider _mudThemeProvider;
+
+}

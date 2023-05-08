@@ -1,0 +1,12 @@
+﻿@inject IJSRuntime JsRuntime
+@inherits DefaultComponentBase
+
+@code {
+
+    [CascadingParameter]
+    public LoginMain? Main { get; set; }
+
+    [CascadingParameter]
+    public RegisterModal? RegisterModal { get; set; }
+
+}

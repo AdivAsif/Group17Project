@@ -1,0 +1,331 @@
+﻿@page "/Series"
+@inject NavigationManager NavigationManager
+@inherits SeriesComponentBase
+@inject ProfileStateService ProfileStateService
+@inject IReviews_and_RatingsClient ReviewsAndRatingsClient
+@inject IAuthClient AuthClient
+@inject IProfileClient ProfileClient
+@inject ITV_SeriesClient SeriesClient
+@using Group17PortalWasm.Settings
+@using Group17.ReviewsRatings
+@using Group17.TVSeries
+@using Group17PortalWasm.Helpers
+@using Group17PortalWasm.Services
+@using Group17.Auth
+@using Group17.Profile
+@using APIException = Group17.Profile.APIException
+@implements IDisposable
+
+<CascadingValue Value="this">
+    <MudContainer MaxWidth="MaxWidth.ExtraExtraLarge">
+        @if (IsLoading)
+        {
+            <MudGrid>
+                <MudItem xs="12" sm="12">
+                    <MudPaper Class="pa-4 m-4" Style="text-align: center">
+                        <MudProgressLinear Color="Color.Primary" Indeterminate="true"/>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+        }
+        else
+        {
+            <ReviewModal @ref="_reviewModal"></ReviewModal>
+            <MudGrid>
+                @if (SeriesInfo == null)
+                {
+                    <MudItem xs="12">
+                        <MudAlert Severity="Severity.Warning">Series not specified.</MudAlert>
+                    </MudItem>
+                }
+                <MudItem xs="12">
+                    <MudPaper Class="pa-4">
+                        <MudGrid>
+                            <div class="backdrop-container">
+                                <MudImage Src="@(SeriesInfo?.Backdrop)" Alt="got.jpg" Class="backdrop-image"></MudImage>
+                                <div class="poster-container">
+                                    <MudImage Src="@(SeriesInfo?.Poster)" Alt="bb.jpg" Class="poster-image"></MudImage>
+                                </div>
+                            </div>
+                        </MudGrid>
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="12" sm="12">
+                    <MudGrid>
+                        <MudItem xs="8">
+                            <MudPaper Class="pa-2">
+                                <div class="header-wrapper">
+                                    <div class="header-item">
+                                        <MudText Typo="Typo.h3" Inline="true">@($"{SeriesInfo?.Name} - {SeriesInfo?.Year_aired}")</MudText>
+                                    </div>
+                                    <div class="flex-grow-1"></div>
+                                    <div class="header-item">
+                                        <MudTooltip Placement="Placement.Top" Arrow="false" ShowOnHover="true" Text="TMDB Rating">
+                                            <MudRating MaxValue="5" SelectedValue="@((int) SeriesInfo?.Rating.GetValueOrDefault())" Size="Size.Large" Disabled="true"></MudRating>
+                                        </MudTooltip>
+                                    </div>
+                                </div>
+                            </MudPaper>
+                            <MudPaper Class="pa-2 my-2">
+                                <MudText Typo="Typo.h6">Overview</MudText>
+                                <MudDivider DividerType="DividerType.FullWidth" Class="my-2"/>
+                                <MudText Typo="Typo.body1" Inline="true">@SeriesInfo?.Overview</MudText>
+                            </MudPaper>
+                            <MudPaper Class="pa-2 my-2">
+                                <MudText Typo="Typo.h6">Keywords</MudText>
+                                <MudDivider DividerType="DividerType.FullWidth" Class="my-2"/>
+                                @if (SeriesInfo != null && !string.IsNullOrWhiteSpace(SeriesInfo.Keywords))
+                                {
+                                    @foreach (var keyword in SeriesInfo?.Keywords?.Split(" "))
+                                    {
+                                        var random = _random.Next(1, 7);
+                                        <MudChip Color="@(random switch
+                                                        {
+                                                            1 => Color.Default,
+                                                            2 => Color.Primary,
+                                                            3 => Color.Secondary,
+                                                            4 => Color.Info,
+                                                            5 => Color.Success,
+                                                            6 => Color.Warning,
+                                                            _ => Color.Dark
+                                                            })">
+                                            @keyword.ToUpper()
+                                        </MudChip>
+                                    }
+                                }
+                            </MudPaper>
+                            <MudPaper Class="pa-2 my-2">
+                                <div class="header-wrapper">
+                                    <div class="header-item">
+                                        <MudText Typo="Typo.h6">Reviews</MudText>
+                                    </div>
+                                    <div class="flex-grow-1"></div>
+                                    <div class="header-item">
+                                        <MudTooltip Placement="Placement.Top" Arrow="false" ShowOnHover="true" Text="WatchWhiz Rating">
+                                            <MudRating MaxValue="10" SelectedValue="@(AverageRating.AverageRating1)" Size="Size.Large" Disabled="true"></MudRating>
+                                        </MudTooltip>
+                                    </div>
+                                </div>
+                                <MudDivider DividerType="DividerType.FullWidth" Class="my-2"/>
+                                <div class="d-flex flex-column px-4" style="max-height: 51vh; min-height: 51vh; overflow: scroll" id="chatContainer">
+                                    @if (Reviews.Count != 0)
+                                    {
+                                        @foreach (var review in Reviews)
+                                        {
+                                            <div class="d-flex flex-row my-4">
+                                                <div class="mr-4">
+                                                    <MudAvatar Color="Color.Secondary" Size="Size.Medium" @onclick="@(async () => await GoToUserProfile(review.User.Id))" Style="cursor: pointer">
+                                                        @if (!string.IsNullOrWhiteSpace(review.Profile?.ProfilePictureUrl))
+                                                        {
+                                                            <MudImage Src="@(review.Profile?.ProfilePictureUrl)" Class="avatar-image"></MudImage>
+                                                        }
+                                                        else
+                                                        {
+                                                            @review.User?.Username[0]
+                                                        }
+                                                    </MudAvatar>
+                                                </div>
+                                                <div style="width: 100%">
+                                                    <MudText Typo="Typo.body1">@review.User?.Username</MudText>
+                                                    <div class="d-flex flex-column">
+                                                        <div class="review-container">
+                                                            <MudText Typo="Typo.body2">@review.Review?.Review</MudText>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <div class="d-flex flex-row my-4">
+                                            <div>
+                                                <MudText Typo="Typo.h6">There are no reviews for this show yet, be the first to leave one!</MudText>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            </MudPaper>
+                        </MudItem>
+                        <MudItem xs="4">
+                            <MudPaper Class="pa-2">
+                                <MudCard Outlined="true" Class="custom-card" Style="cursor: pointer">
+                                    <MudCardContent>
+                                        @if (UserInfo == null)
+                                        {
+                                            <MudLink Href="/Login" Underline="Underline.None">
+                                                <MudText Typo="Typo.body1">Sign in to rate or review</MudText>
+                                            </MudLink>
+                                        }
+                                        else
+                                        {
+                                            <MudLink OnClick="OpenReviewModal" Underline="Underline.None">
+                                                <MudText Typo="Typo.body1">Leave a rating or review</MudText>
+                                            </MudLink>
+                                        }
+                                    </MudCardContent>
+                                </MudCard>
+                            </MudPaper>
+                            <MudTooltip Placement="Placement.Top" ShowOnHover="true" Text="@("Recommendations")" RootStyle="display: unset !important" Style="display: unset !important;">
+                                <MudPaper Class="pa-2 mt-2 centered-carousel" Style="height: 850px">
+                                    <MudCarousel @ref="_carousel" ItemsSource="@Recommendations?.ToList()" @bind-SelectedIndex="selectedIndex" Class="custom-carousel">
+                                        <ItemTemplate>
+                                            <MudCard Outlined="true" @onclick="@(() => GoToSeries(context.Id))" Class="custom-card" Style="cursor: pointer; height: 100%">
+                                                <MudCardHeader>
+                                                    <CardHeaderContent>
+                                                        <MudText Typo="Typo.body1">@context?.Name</MudText>
+                                                    </CardHeaderContent>
+                                                </MudCardHeader>
+                                                <MudCardMedia Image="@context?.Poster" Style="height: 100%; object-fit: contain"/>
+                                            </MudCard>
+                                        </ItemTemplate>
+                                    </MudCarousel>
+                                </MudPaper>
+                            </MudTooltip>
+                        </MudItem>
+                    </MudGrid>
+                </MudItem>
+            </MudGrid>
+        }
+    </MudContainer>
+</CascadingValue>
+
+@code {
+
+    protected override async Task OnInitializedAsync()
+    {
+        StartLoading();
+        if (UserInfo != null)
+        {
+            ProfileStateService.OnChange += StateHasChanged;
+            ProfileInfo = await ProfileStateService.GetProfileInfo();
+        }
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(NavigationManager.ToAbsoluteUri(NavigationManager.Uri).Query) && int.TryParse(NavigationManager.ToAbsoluteUri(NavigationManager.Uri).Query[1..], out var parsedInt))
+            {
+                SeriesId = parsedInt;
+            }
+            else
+            {
+                NavigationManager.NavigateTo("/Search", true);
+            }
+            var series = await SeriesClient.Get_series_info_by_idAsync(SeriesId);
+            SeriesInfo = series.Series_info;
+            await GetRecommendations();
+            await GetReviews();
+            await GetAverageRating();
+        }
+        catch (APIException ex)
+        {
+            await DisplayError(ErrorHelper.UnwrapError(ex).ToString());
+        }
+        StopLoading();
+    }
+
+    public void Dispose()
+    {
+        ProfileStateService.OnChange -= StateHasChanged;
+    }
+
+    public async Task GetRecommendations()
+    {
+        await _carousel.DisposeAsync();
+        var recommendations = await SeriesClient.Get_recommendations_by_idAsync(SeriesId);
+        Recommendations = recommendations.Recommendations.ToList();
+        _carousel.ItemsSource = Recommendations;
+        StateHasChanged();
+    }
+
+    private async Task GoToSeries(int id)
+    {
+        StartLoading();
+        NavigationManager.NavigateTo($"/Series?{id}", false);
+        var seriesInfo = await SeriesClient.Get_series_info_by_idAsync(id);
+        SeriesId = id;
+        SeriesInfo = seriesInfo.Series_info;
+        await GetRecommendations();
+        await GetReviews();
+        await GetAverageRating();
+        StopLoading();
+        StateHasChanged();
+    }
+
+    private async Task OpenReviewModal()
+    {
+        _reviewModal.Close();
+        if (SeriesInfo != null)
+        {
+            await _reviewModal.Initialise(SeriesInfo);
+            _reviewModal.Open();
+        }
+    }
+
+    public async Task GetReviews()
+    {
+        try
+        {
+            var reviews = await ReviewsAndRatingsClient.Get_get_reviewsAsync(SeriesId);
+            var reviewList = reviews.Reviews.ToList();
+            Reviews = await FillUserAndProfileInfoForReviews(reviewList);
+        }
+        catch (APIException ex)
+        {
+            await DisplayError(ErrorHelper.UnwrapError(ex).ToString());
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+
+    public async Task GetAverageRating()
+    {
+        try
+        {
+            AverageRating = await ReviewsAndRatingsClient.Get_get_average_ratingAsync(SeriesId);
+        }
+        catch (APIException ex)
+        {
+            await DisplayError(ErrorHelper.UnwrapError(ex).ToString());
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+
+    private async Task<List<ReviewModel>> FillUserAndProfileInfoForReviews(List<ReviewWithTVSeries> reviewList)
+    {
+        if (reviewList.Count == 0) return new List<ReviewModel>();
+        var users = await AuthClient.GetUsersByIdAsync(reviewList.Select(r => r.UserId));
+        var profiles = await ProfileClient.GetProfilesByUserIdsAsync(users.Data.Select(u => u.Id));
+
+        return reviewList.Select(review => new ReviewModel
+        {
+            User = users.Data.FirstOrDefault(u => review.UserId == u.Id), Profile = profiles.Data.FirstOrDefault(p => review.UserId == p.UserId), Review = review
+        }).ToList();
+    }
+
+    private async Task GoToUserProfile(int userId)
+    {
+        NavigationManager.NavigateTo($"/Profile?{userId}", true);
+    }
+
+    [CascadingParameter]
+    public UserInfo? UserInfo { get; set; }
+
+    public ProfileInfo? ProfileInfo { get; set; }
+    public SeriesInfo? SeriesInfo { get; set; }
+    public int SeriesId { get; set; }
+    public List<SeriesInfo>? Recommendations { get; set; } = new();
+
+    private MudCarousel<SeriesInfo> _carousel = new();
+    private MudForm _form = new();
+    private bool _uploading;
+    private ReviewModal _reviewModal = new();
+    private readonly Random _random = new(2000);
+    private int selectedIndex = 1;
+    private List<ReviewModel> Reviews { get; set; } = new();
+    private AverageRating AverageRating { get; set; } = new();
+}

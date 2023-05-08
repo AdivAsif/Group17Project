@@ -1,0 +1,39 @@
+﻿@inherits ProfileComponentBase
+@inject IJSRuntime JsRuntime
+
+@code {
+
+    protected string ModalDisplay = "none";
+    protected string ModalClass = "";
+
+    private static EventHandler? ModalOpened => null;
+
+    private static EventHandler? ModalClosed => null;
+
+    private bool _shouldRender;
+
+    protected override bool ShouldRender()
+    {
+        return _shouldRender;
+    }
+
+    [Parameter]
+    public string? ModalTitle { get; set; }
+
+    public void Open()
+    {
+        _shouldRender = true;
+        ModalDisplay = "block";
+        ModalOpened?.Invoke(this, EventArgs.Empty);
+        StateHasChanged();
+    }
+
+    public void Close()
+    {
+        ModalDisplay = "none";
+        ModalClosed?.Invoke(this, EventArgs.Empty);
+        StateHasChanged();
+        _shouldRender = false;
+    }
+
+}

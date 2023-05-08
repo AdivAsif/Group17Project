@@ -1,0 +1,91 @@
+﻿@inject NavigationManager NavigationManager
+@using Group17.TVSeries
+@using Group17PortalWasm.Helpers
+@using APIException = Group17.Profile.APIException
+@inherits DefaultModalBase
+@inject ITV_SeriesClient SeriesClient
+
+<div class="modal modal-backdrop modal-background" role="dialog" style="padding: 0; display: @ModalDisplay;">
+    <div style="height: 100%; width: 100%; position: absolute" @onclick="Close"></div>
+    <div class="modal-dialog modal-sm" style="display: table; vertical-align: middle">
+        <MudPaper Class="modal-content" Style="padding: 13px; height: 80%; width: 33vw;">
+            @if (IsLoading)
+            {
+                <MudGrid>
+                    <MudItem xs="12" sm="12">
+                        <MudPaper Class="pa-4 m-4" Style="text-align: center">
+                            <MudProgressLinear Color="Color.Primary" Indeterminate="true"/>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+            }
+            else
+            {
+                <div class="modal-body">
+                    <MudAutocomplete T="Series" Label="Search TV Series" @bind-Value="SelectedSeries" SearchFunc="Search" ToStringFunc="@(e => e == null ? null : $"{e.Name}")"
+                                     ResetValueOnEmptyText="true" AdornmentIcon="@Icons.Material.Filled.Search" AdornmentColor="Color.Primary">
+                        <ItemTemplate Context="e">
+                            <MudText @onclick="@(async () => await GoToSeriesPage(e.Id))">@e.Name</MudText>
+                        </ItemTemplate>
+                        <NoItemsTemplate>
+                            <MudText Align="Align.Center" Class="px-4 py-1">
+                                No series found.
+                            </MudText>
+                        </NoItemsTemplate>
+                    </MudAutocomplete>
+                </div>
+            }
+        </MudPaper>
+    </div>
+</div>
+
+@code {
+
+    protected override async Task OnInitializedAsync()
+    {
+        StartLoading();
+        try
+        {
+            ModalTitle = "Search for TV Series here...";
+        }
+        catch (APIException ex)
+        {
+            await DisplayError(ErrorHelper.UnwrapError(ex).ToString());
+        }
+        StopLoading();
+    }
+
+    private async Task GoToSeriesPage(int id)
+    {
+        _searching = true;
+        try
+        {
+            NavigationManager.NavigateTo($"/Series?{id}", true);
+            StateHasChanged();
+        }
+        catch (APIException ex)
+        {
+            await DisplayError(ErrorHelper.UnwrapError(ex).ToString());
+        }
+        _searching = false;
+    }
+
+    private async Task<IEnumerable<Series>> Search(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return Array.Empty<Series>();
+
+        var searchSeries = await SeriesClient.Get_series_namesAsync(value);
+        ListOfSeries = searchSeries.Names.ToList();
+        return ListOfSeries;
+    }
+
+    [CascadingParameter]
+    public bool IsDarkMode { get; set; }
+
+    private bool _searching;
+    private string Query { get; set; } = "";
+    private Series? SelectedSeries { get; set; }
+    private List<Series> ListOfSeries { get; set; } = new();
+
+}

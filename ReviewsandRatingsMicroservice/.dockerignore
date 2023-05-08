@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pyc
+.dockerignore
+Dockerfile
+*.log
+*.sqlite
+*.json
+*.csv
+appsettings.json
