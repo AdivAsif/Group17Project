@@ -25,7 +25,7 @@
         <MudAppBar Bottom="true" Fixed="false" Class="@(IsDarkMode ? "home-bar-dark" : "home-bar-light")">
             <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.Center" Style="width: 100%">
                 <MudButton Href="AboutUs">About</MudButton>
-                <MudButton>GitLab</MudButton>
+                <MudButton Href="GitLab">GitLab</MudButton>
                 <div class="flex-grow-1"></div>
                 <MudIconButton OnClick="@(() => IsDarkMode = !IsDarkMode)" Icon="@(IsDarkMode ? Icons.Material.Filled.DarkMode : Icons.Material.Filled.LightMode)" Class="ma-4" Variant="Variant.Outlined"/>
             </MudStack>

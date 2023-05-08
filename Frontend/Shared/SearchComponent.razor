@@ -60,7 +60,7 @@
         _searching = true;
         try
         {
-            NavigationManager.NavigateTo($"/Series?{id}", true);
+            NavigationManager.NavigateTo($"/Recommendations?{id}", true);
             StateHasChanged();
         }
         catch (APIException ex)

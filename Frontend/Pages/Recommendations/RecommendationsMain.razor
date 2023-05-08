@@ -23,7 +23,7 @@
     {
         <MudPaper Class="pa-4">
             <MudText Typo="Typo.h5" Class="d-flex justify-content-center">
-                Shows similar to @SeriesInfo?.Name
+                Shows similar to&nbsp;<MudLink OnClick="@(() => GoToSeries(SeriesId))" Underline="Underline.None" Color="Color.Primary" Typo="Typo.h5">@SeriesInfo?.Name</MudLink>
             </MudText>
             <MudDivider DividerType="DividerType.FullWidth" Class="my-2"></MudDivider>
             <MudGrid Style="justify-content: center !important;">
