@@ -1525,12 +1525,6 @@ namespace Group17.Auth
         [Newtonsoft.Json.JsonProperty("refreshTokenExpires", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
         public long RefreshTokenExpires { get; set; }
 
-        [Newtonsoft.Json.JsonProperty("profilePictureUrl", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
-        public string ProfilePictureUrl { get; set; }
-
-        [Newtonsoft.Json.JsonProperty("profilePictureSas", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
-        public string ProfilePictureSas { get; set; }
-
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.18.2.0 (NJsonSchema v10.8.0.0 (Newtonsoft.Json v13.0.0.0))")]
@@ -1597,10 +1591,6 @@ namespace Group17.Auth
         [Newtonsoft.Json.JsonProperty("confirmEmail", Required = Newtonsoft.Json.Required.Always)]
         [System.ComponentModel.DataAnnotations.Required]
         public string ConfirmEmail { get; set; }
-
-        [Newtonsoft.Json.JsonProperty("callbackUrl", Required = Newtonsoft.Json.Required.Always)]
-        [System.ComponentModel.DataAnnotations.Required]
-        public string CallbackUrl { get; set; }
 
     }
 
@@ -1739,10 +1729,6 @@ namespace Group17.Auth
         [System.ComponentModel.DataAnnotations.Required]
         public string EmailAddress { get; set; }
 
-        [Newtonsoft.Json.JsonProperty("callbackUrl", Required = Newtonsoft.Json.Required.Always)]
-        [System.ComponentModel.DataAnnotations.Required]
-        public string CallbackUrl { get; set; }
-
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.18.2.0 (NJsonSchema v10.8.0.0 (Newtonsoft.Json v13.0.0.0))")]
@@ -1867,9 +1853,6 @@ namespace Group17.Auth
         [System.ComponentModel.DataAnnotations.Required]
         [System.ComponentModel.DataAnnotations.StringLength(100, MinimumLength = 8)]
         public string ConfirmPassword { get; set; }
-
-        [Newtonsoft.Json.JsonProperty("callbackUrl", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
-        public string CallbackUrl { get; set; }
 
         [Newtonsoft.Json.JsonProperty("firstName", Required = Newtonsoft.Json.Required.Always)]
         [System.ComponentModel.DataAnnotations.Required]

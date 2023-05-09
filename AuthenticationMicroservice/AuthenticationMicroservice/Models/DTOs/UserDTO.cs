@@ -34,27 +34,21 @@ public class UserRegisterRequestDTO : UserDTO
     [Required]
     [StringLength(100, MinimumLength = 8)]
     public string? ConfirmPassword { get; set; }
-
-    public string? CallbackUrl { get; set; }
 }
 
-public abstract class ChangeEmailRequestDTO
+public class ChangeEmailRequestDTO
 {
     [Required] public string? NewEmail { get; set; }
 
     [Required] public string? ConfirmEmail { get; set; }
-
-    [Required] public string? CallbackUrl { get; set; }
 }
 
-public abstract class ForgotPasswordRequestDTO
+public class ForgotPasswordRequestDTO
 {
     [Required] public string? EmailAddress { get; set; }
-
-    [Required] public string? CallbackUrl { get; set; }
 }
 
-public abstract class SetPasswordRequestDTO
+public class SetPasswordRequestDTO
 {
     [Required] public string? Token { get; set; }
 
@@ -67,7 +61,7 @@ public abstract class SetPasswordRequestDTO
     public string? ConfirmPassword { get; set; }
 }
 
-public abstract class ChangePasswordRequestDTO
+public class ChangePasswordRequestDTO
 {
     [Required] public string? OldPassword { get; set; }
 
@@ -96,8 +90,4 @@ public class AuthenticatedUserDTO
     public string? RefreshToken { get; set; }
 
     public long RefreshTokenExpires { get; set; }
-
-    public string? ProfilePictureUrl { get; set; }
-
-    public string? ProfilePictureSas { get; set; }
 }

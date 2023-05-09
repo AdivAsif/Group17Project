@@ -127,7 +127,7 @@ public class AuthService : IAuthService
             throw new AuthenticationException("User not found.", HttpStatusCode.Unauthorized);
         if (string.IsNullOrWhiteSpace(user.UnconfirmedEmail))
             throw new AuthenticationException("Email already confirmed.", HttpStatusCode.BadRequest);
-        var tryParse = TryParse(token, out var parsedToken);
+        var tryParse = TryParse(token[1..], out var parsedToken);
         if (!tryParse)
             throw new AuthenticationException("Token in request is not valid.");
         if (user.EmailConfirmationToken != parsedToken)
@@ -155,8 +155,7 @@ public class AuthService : IAuthService
 
     public async Task ForgotPassword(ForgotPasswordRequestDTO request)
     {
-        var user = await _context.User.FirstOrDefaultAsync(u =>
-            string.Equals(u.EmailAddress, request.EmailAddress, StringComparison.CurrentCultureIgnoreCase));
+        var user = await _context.User.FirstOrDefaultAsync(u => u.EmailAddress == request.EmailAddress);
         if (user == null)
             throw new AuthenticationException($"User with email: {request.EmailAddress} does not exist.",
                 HttpStatusCode.Unauthorized);
@@ -175,7 +174,7 @@ public class AuthService : IAuthService
     {
         if (string.IsNullOrWhiteSpace(request.Password))
             throw new SecurityHelper.InvalidPasswordException("Please enter a password.");
-        var tryParse = TryParse(request.Token, out var token);
+        var tryParse = TryParse(request.Token?[1..], out var token);
         if (!tryParse)
             throw new AuthenticationException("Token in request is not valid.");
         var user = _context.User.FirstOrDefault(u => u.PasswordResetToken == token);

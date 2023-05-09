@@ -98,7 +98,7 @@ builder.Services.AddCors(options =>
     options.AddDefaultPolicy(
         corsPolicyBuilder =>
         {
-            corsPolicyBuilder.WithOrigins(builder.Configuration.GetSection("Group17Website")["BaseUrl"] ?? string.Empty)
+            corsPolicyBuilder.WithOrigins(builder.Configuration.GetSection("FrontendStrings")["BaseUrl"] ?? string.Empty)
                 .AllowAnyHeader()
                 .AllowAnyMethod()
                 .AllowCredentials();
