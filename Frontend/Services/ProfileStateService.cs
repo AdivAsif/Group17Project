@@ -17,8 +17,12 @@ public class ProfileStateService
     public async Task<ProfileInfo?> GetProfileInfo()
     {
         if (_profileInfo != null) return _profileInfo;
-        var profileFromApi = await _profileClient.GetProfileForUserAsync();
-        _profileInfo = new ProfileInfo {ProfileDetails = profileFromApi.Data};
+        try
+        {
+            var profileFromApi = await _profileClient.GetProfileForUserAsync();
+            _profileInfo = new ProfileInfo {ProfileDetails = profileFromApi.Data};
+        }
+        catch (Exception) { }
 
         return _profileInfo;
     }
